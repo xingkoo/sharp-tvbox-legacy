@@ -4,7 +4,7 @@
       "key": "csp_SNzy",
       "name": "📺┃非凡┃安卓4兼容",
       "type": 1,
-      "api": "http://ffzy1.tv/api.php/provide/vod/",
+      "api": "http://www.ffzy.tv/api.php/provide/vod/",
       "searchable": 1,
       "quickSearch": 1,
       "filterable": 1,

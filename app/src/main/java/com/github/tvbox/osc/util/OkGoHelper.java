@@ -11,12 +11,8 @@ import com.squareup.picasso.OkHttp3Downloader;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
@@ -106,28 +102,13 @@ public class OkGoHelper {
         builder.cache(new Cache(new File(App.getInstance().getCacheDir().getAbsolutePath(), "dohcache"), 10 * 1024 * 1024));
         OkHttpClient dohClient = builder.build();
         String dohUrl = getDohUrl(Hawk.get(HawkConfig.DOH_URL, 0));
-        final Dns upstream;
         if (dohUrl.isEmpty()) {
             dnsOverHttps = null;
-            upstream = Dns.SYSTEM;
+            appDns = Dns.SYSTEM;
         } else {
             dnsOverHttps = new DnsOverHttps.Builder().client(dohClient).url(HttpUrl.get(dohUrl)).build();
-            upstream = dnsOverHttps;
+            appDns = dnsOverHttps;
         }
-        appDns = new Dns() {
-            @Override
-            public List<InetAddress> lookup(String hostname) throws UnknownHostException {
-                // This TV's DHCP resolver maps ffzy1.tv to an unreachable stale
-                // address. Keep the hostname for HTTP Host/SNI while using the
-                // source's verified IPv4 frontends inside TVBox only.
-                if ("ffzy1.tv".equalsIgnoreCase(hostname)) {
-                    return Arrays.asList(
-                            InetAddress.getByAddress(new byte[]{(byte) 172, (byte) 247, 13, (byte) 251}),
-                            InetAddress.getByAddress(new byte[]{(byte) 91, (byte) 110, (byte) 207, 6}));
-                }
-                return upstream.lookup(hostname);
-            }
-        };
     }
 
 
