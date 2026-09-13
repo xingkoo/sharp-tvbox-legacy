@@ -31,6 +31,8 @@ import me.jessyan.autosize.unit.Subunits;
  * @description:
  */
 public class App extends MultiDexApplication {
+    private static final String LEGACY_DEFAULT_CONFIG_URL =
+            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/3abfebb/configs/sharp-tvbox-android44-candidates.json";
     private static App instance;
 
     @Override
@@ -84,6 +86,12 @@ public class App extends MultiDexApplication {
         // not alter Android's network or DNS settings.
         if (!Hawk.contains(HawkConfig.DOH_URL)) {
             Hawk.put(HawkConfig.DOH_URL, 1);
+        }
+        if (!Hawk.contains(HawkConfig.API_URL)) {
+            Hawk.put(HawkConfig.API_URL, LEGACY_DEFAULT_CONFIG_URL);
+        }
+        if (!Hawk.contains(HawkConfig.HOME_REC)) {
+            Hawk.put(HawkConfig.HOME_REC, 1);
         }
     }
 
