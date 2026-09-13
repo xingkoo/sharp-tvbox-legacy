@@ -1,6 +1,7 @@
 package com.github.tvbox.osc.base;
 
 import android.app.Activity;
+import android.util.Log;
 import androidx.multidex.MultiDexApplication;
 
 import com.github.tvbox.osc.bean.VodInfo;
@@ -17,6 +18,10 @@ import com.github.tvbox.osc.util.js.JSEngine;
 import com.kingja.loadsir.core.LoadSir;
 import com.orhanobut.hawk.Hawk;
 
+import org.conscrypt.Conscrypt;
+
+import java.security.Security;
+
 import me.jessyan.autosize.AutoSizeConfig;
 import me.jessyan.autosize.unit.Subunits;
 
@@ -31,6 +36,7 @@ public class App extends MultiDexApplication {
     @Override
     public void onCreate() {
         super.onCreate();
+        installModernTlsProvider();
         instance = this;
         initParams();
         // OKGo
@@ -50,6 +56,17 @@ public class App extends MultiDexApplication {
                 .setSupportSubunits(Subunits.MM);
         PlayerHelper.init();
         JSEngine.getInstance().create();
+    }
+
+    private void installModernTlsProvider() {
+        try {
+            if (Security.getProvider("Conscrypt") == null) {
+                Security.insertProviderAt(Conscrypt.newProvider(), 1);
+            }
+            Log.i("TVBox", "TLS provider: " + Security.getProviders()[0].getName());
+        } catch (Throwable th) {
+            Log.w("TVBox", "Modern TLS provider unavailable", th);
+        }
     }
 
     private void initParams() {
