@@ -735,7 +735,7 @@ public class SourceViewModel extends ViewModel {
 
     private AbsSortXml sortJson(MutableLiveData<AbsSortXml> result, String json) {
         try {
-            JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
+            JsonObject obj = new JsonParser().parse(json).getAsJsonObject();
             AbsSortJson sortJson = new Gson().fromJson(obj, new TypeToken<AbsSortJson>() {
             }.getType());
             AbsSortXml data = sortJson.toAbsSortXml();

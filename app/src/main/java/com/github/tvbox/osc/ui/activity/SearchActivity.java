@@ -312,7 +312,7 @@ public class SearchActivity extends BaseActivity {
                         try {
                             ArrayList<String> hots = new ArrayList<>();
                             String result = response.body();
-                            JsonObject json = JsonParser.parseString(result).getAsJsonObject();
+                            JsonObject json = new JsonParser().parse(result).getAsJsonObject();
                             JsonArray itemList = json.get("data").getAsJsonArray();
                             for (JsonElement ele : itemList) {
                                 JsonObject obj = (JsonObject) ele;
@@ -351,7 +351,7 @@ public class SearchActivity extends BaseActivity {
                     public void onSuccess(Response<String> response) {
                         try {
                             ArrayList<String> hots = new ArrayList<>();
-                            JsonArray itemList = JsonParser.parseString(response.body()).getAsJsonObject().get("data").getAsJsonObject().get("mapResult").getAsJsonObject().get("0").getAsJsonObject().get("listInfo").getAsJsonArray();
+                            JsonArray itemList = new JsonParser().parse(response.body()).getAsJsonObject().get("data").getAsJsonObject().get("mapResult").getAsJsonObject().get("0").getAsJsonObject().get("listInfo").getAsJsonArray();
 //                            JsonArray itemList = JsonParser.parseString(response.body()).getAsJsonObject().get("data").getAsJsonArray();
                             for (JsonElement ele : itemList) {
                                 JsonObject obj = (JsonObject) ele;
