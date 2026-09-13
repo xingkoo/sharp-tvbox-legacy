@@ -63,6 +63,7 @@ public class App extends MultiDexApplication {
             if (Security.getProvider("Conscrypt") == null) {
                 Security.insertProviderAt(Conscrypt.newProvider(), 1);
             }
+            Conscrypt.setUseEngineSocketByDefault(false);
             Log.i("TVBox", "TLS provider: " + Security.getProviders()[0].getName());
         } catch (Throwable th) {
             Log.w("TVBox", "Modern TLS provider unavailable", th);
