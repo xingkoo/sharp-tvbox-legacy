@@ -1,10 +1,11 @@
 {
   "sites": [
     {
-      "key": "csp_SNzy",
-      "name": "🐉┃索尼┃高清",
+      "key": "csp_非凡资源",
+      "name": "🥗┃非凡┃资源",
       "type": 1,
-      "api": "https://suoniapi.com/api.php/provide/vod/?ac=list",
+      "api": "http://ffzy1.tv/api.php/provide/vod/",
+      "playurl": "json:http://jx.84jia.com/m3u8ts.php?url=",
       "searchable": 1,
       "quickSearch": 1,
       "filterable": 1,
@@ -37,11 +38,10 @@
       ]
     },
     {
-      "key": "csp_非凡资源",
-      "name": "🥗┃非凡┃资源",
+      "key": "csp_SNzy",
+      "name": "🐉┃索尼┃高清",
       "type": 1,
-      "api": "http://ffzy1.tv/api.php/provide/vod/",
-      "playurl": "json:http://jx.84jia.com/m3u8ts.php?url=",
+      "api": "https://suoniapi.com/api.php/provide/vod/?ac=list",
       "searchable": 1,
       "quickSearch": 1,
       "filterable": 1,
