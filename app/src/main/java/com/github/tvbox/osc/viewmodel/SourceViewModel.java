@@ -41,6 +41,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -743,9 +744,10 @@ public class SourceViewModel extends ViewModel {
                 if (obj.has("filters")) {
                     LinkedHashMap<String, ArrayList<MovieSort.SortFilter>> sortFilters = new LinkedHashMap<>();
                     JsonObject filters = obj.getAsJsonObject("filters");
-                    for (String key : filters.keySet()) {
+                    for (Map.Entry<String, JsonElement> entry : filters.entrySet()) {
+                        String key = entry.getKey();
                         ArrayList<MovieSort.SortFilter> sortFilter = new ArrayList<>();
-                        JsonElement one = filters.get(key);
+                        JsonElement one = entry.getValue();
                         if (one.isJsonObject()) {
                             sortFilter.add(getSortFilter(one.getAsJsonObject()));
                         } else {
