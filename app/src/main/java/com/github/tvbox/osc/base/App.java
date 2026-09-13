@@ -79,6 +79,12 @@ public class App extends MultiDexApplication {
         if (!Hawk.contains(HawkConfig.PLAY_TYPE)) {
             Hawk.put(HawkConfig.PLAY_TYPE, 1);
         }
+        // The TV's DHCP resolver returns an unreachable address for several
+        // configured providers.  This is an app-only resolver choice; it does
+        // not alter Android's network or DNS settings.
+        if (!Hawk.contains(HawkConfig.DOH_URL)) {
+            Hawk.put(HawkConfig.DOH_URL, 1);
+        }
     }
 
     public static App getInstance() {
