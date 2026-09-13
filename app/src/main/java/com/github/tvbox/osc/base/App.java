@@ -32,9 +32,9 @@ import me.jessyan.autosize.unit.Subunits;
  */
 public class App extends MultiDexApplication {
     private static final String LEGACY_DEFAULT_CONFIG_URL =
-            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/a0351a21b0f7bd952964d32fd504cce26856d820/configs/sharp-tvbox-android44-candidates.json";
+            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/c04b8adac93892bed93498daa25e959611fb756c/configs/sharp-tvbox-android44-candidates.json";
     private static final String LEGACY_DOH_MIGRATION = "sharp44_doh_disabled_v1";
-    private static final String LEGACY_CONFIG_MIGRATION = "sharp44_direct_config_v1";
+    private static final String LEGACY_CONFIG_MIGRATION = "sharp44_direct_config_v2";
     private static App instance;
 
     @Override
