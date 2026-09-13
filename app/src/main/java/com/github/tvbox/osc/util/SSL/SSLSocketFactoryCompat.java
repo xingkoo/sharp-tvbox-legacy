@@ -100,7 +100,16 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
             ssl.setEnabledProtocols(protocols);
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && cipherSuites != null) {
-            ssl.setEnabledCipherSuites(cipherSuites);
+            List<String> supportedCiphers = Arrays.asList(ssl.getSupportedCipherSuites());
+            List<String> compatibleCiphers = new LinkedList<>();
+            for (String cipherSuite : cipherSuites) {
+                if (supportedCiphers.contains(cipherSuite)) {
+                    compatibleCiphers.add(cipherSuite);
+                }
+            }
+            if (!compatibleCiphers.isEmpty()) {
+                ssl.setEnabledCipherSuites(compatibleCiphers.toArray(new String[compatibleCiphers.size()]));
+            }
         }
     }
 
