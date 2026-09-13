@@ -97,7 +97,12 @@ public class SSLSocketFactoryCompat extends SSLSocketFactory {
         // but it still allows SSLv3
         // https://developer.android.com/about/versions/android-5.0-changes.html#ssl
         if (protocols != null) {
-            ssl.setEnabledProtocols(protocols);
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP
+                    && Arrays.asList(protocols).contains("TLSv1.2")) {
+                ssl.setEnabledProtocols(new String[]{"TLSv1.2"});
+            } else {
+                ssl.setEnabledProtocols(protocols);
+            }
         }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP && cipherSuites != null) {
             List<String> supportedCiphers = Arrays.asList(ssl.getSupportedCipherSuites());
