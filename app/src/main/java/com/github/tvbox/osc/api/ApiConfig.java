@@ -50,6 +50,12 @@ import java.util.regex.Pattern;
  * @description:
  */
 public class ApiConfig {
+    /**
+     * This TV runs Android 4.4 with an old MStar-provided Gson on BOOTCLASSPATH.
+     * Do not execute configuration-supplied dex/jar code on it: that code is both
+     * untrusted and commonly compiled against APIs which do not exist on KitKat.
+     */
+    private static final boolean LEGACY_SAFE_MODE = true;
     private static ApiConfig instance;
     private LinkedHashMap<String, SourceBean> sourceBeanList;
     private SourceBean mHomeSource;
@@ -144,7 +150,7 @@ public class ApiConfig {
         } else if (apiUrl.startsWith("clan")) {
             configUrl = clanToAddress(apiUrl);
         } else if (!apiUrl.startsWith("http")) {
-            configUrl = "http://" + configUrl;
+            configUrl = "http://" + apiUrl;
         } else {
             configUrl = apiUrl;
         }
@@ -283,20 +289,44 @@ public class ApiConfig {
 
     private void parseJson(String apiUrl, String jsonStr) {
         JsonObject infoJson = new Gson().fromJson(jsonStr, JsonObject.class);
-        // spider
-        spider = DefaultConfig.safeJsonString(infoJson, "spider", "");
+        if (infoJson == null) {
+            throw new IllegalArgumentException("配置不是 JSON 对象");
+        }
+
+        // Each import replaces the prior in-memory configuration. Keeping stale
+        // entries was a source of misleading post-import failures on old devices.
+        sourceBeanList.clear();
+        parseBeanList.clear();
+        liveChannelGroupList.clear();
+        mHomeSource = null;
+        mDefaultParse = null;
+
+        // Never load a remote jar/csp on this Android 4.4 build. Dynamic code has
+        // repeatedly crashed against the system Gson and is not needed for direct
+        // HTTP/M3U playback.
+        spider = LEGACY_SAFE_MODE ? "" : DefaultConfig.safeJsonString(infoJson, "spider", "");
         // wallpaper
         wallpaper = DefaultConfig.safeJsonString(infoJson, "wallpaper", "");
         // 远端站点源
         SourceBean firstSite = null;
-        for (JsonElement opt : infoJson.get("sites").getAsJsonArray()) {
+        JsonElement sitesElement = infoJson.get("sites");
+        if (sitesElement != null && sitesElement.isJsonArray()) {
+        for (JsonElement opt : sitesElement.getAsJsonArray()) {
+            if (opt == null || !opt.isJsonObject()) continue;
             JsonObject obj = (JsonObject) opt;
             SourceBean sb = new SourceBean();
-            String siteKey = obj.get("key").getAsString().trim();
+            String siteKey = DefaultConfig.safeJsonString(obj, "key", "");
+            String siteName = DefaultConfig.safeJsonString(obj, "name", "");
+            String siteApi = DefaultConfig.safeJsonString(obj, "api", "");
+            int siteType = DefaultConfig.safeJsonInt(obj, "type", -1);
+            String siteJar = DefaultConfig.safeJsonString(obj, "jar", "");
+            if (siteKey.isEmpty() || siteName.isEmpty() || siteApi.isEmpty()) continue;
+            if (!isSupportedLegacySourceType(siteType)) continue;
+            if (LEGACY_SAFE_MODE && (siteType == 3 || !siteJar.isEmpty())) continue;
             sb.setKey(siteKey);
-            sb.setName(obj.get("name").getAsString().trim());
-            sb.setType(obj.get("type").getAsInt());
-            sb.setApi(obj.get("api").getAsString().trim());
+            sb.setName(siteName);
+            sb.setType(siteType);
+            sb.setApi(siteApi);
             sb.setSearchable(DefaultConfig.safeJsonInt(obj, "searchable", 1));
             sb.setQuickSearch(DefaultConfig.safeJsonInt(obj, "quickSearch", 1));
             sb.setFilterable(DefaultConfig.safeJsonInt(obj, "filterable", 1));
@@ -306,13 +336,14 @@ public class ApiConfig {
             }else {
                 sb.setExt(DefaultConfig.safeJsonString(obj, "ext", ""));
             }
-            sb.setJar(DefaultConfig.safeJsonString(obj, "jar", ""));
+            sb.setJar(siteJar);
             sb.setPlayerType(DefaultConfig.safeJsonInt(obj, "playerType", -1));
             sb.setCategories(DefaultConfig.safeJsonStringList(obj, "categories"));
             sb.setClickSelector(DefaultConfig.safeJsonString(obj, "click", ""));
             if (firstSite == null)
                 firstSite = sb;
             sourceBeanList.put(siteKey, sb);
+        }
         }
         if (sourceBeanList != null && sourceBeanList.size() > 0) {
             String home = Hawk.get(HawkConfig.HOME_API, "");
@@ -325,18 +356,32 @@ public class ApiConfig {
         // 需要使用vip解析的flag
         vipParseFlags = DefaultConfig.safeJsonStringList(infoJson, "flags");
         // 解析地址
-        parseBeanList.clear();
         if(infoJson.has("parses")){
-            JsonArray parses = infoJson.get("parses").getAsJsonArray();
+            JsonElement parsesElement = infoJson.get("parses");
+            JsonArray parses = parsesElement != null && parsesElement.isJsonArray() ? parsesElement.getAsJsonArray() : null;
+            if (parses != null) {
             for (JsonElement opt : parses) {
+                if (opt == null || !opt.isJsonObject()) continue;
                 JsonObject obj = (JsonObject) opt;
+                int type = DefaultConfig.safeJsonInt(obj, "type", 0);
+                if (LEGACY_SAFE_MODE && type > 1) continue;
+                String name = DefaultConfig.safeJsonString(obj, "name", "");
+                String url = DefaultConfig.safeJsonString(obj, "url", "");
+                if (name.isEmpty() || url.isEmpty()) continue;
                 ParseBean pb = new ParseBean();
-                pb.setName(obj.get("name").getAsString().trim());
-                pb.setUrl(obj.get("url").getAsString().trim());
-                String ext = obj.has("ext") ? obj.get("ext").getAsJsonObject().toString() : "";
+                pb.setName(name);
+                pb.setUrl(url);
+                String ext = "";
+                if (obj.has("ext")) {
+                    JsonElement extElement = obj.get("ext");
+                    ext = extElement != null && extElement.isJsonObject()
+                            ? extElement.toString()
+                            : DefaultConfig.safeJsonString(obj, "ext", "");
+                }
                 pb.setExt(ext);
-                pb.setType(DefaultConfig.safeJsonInt(obj, "type", 0));
+                pb.setType(type);
                 parseBeanList.add(pb);
+            }
             }
         }
         // 获取默认解析
@@ -353,7 +398,9 @@ public class ApiConfig {
         // 直播源
         liveChannelGroupList.clear();           //修复从后台切换重复加载频道列表
         try {
-            String lives = infoJson.get("lives").getAsJsonArray().toString();
+            JsonElement livesElement = infoJson.get("lives");
+            if (livesElement != null && livesElement.isJsonArray()) {
+            String lives = livesElement.getAsJsonArray().toString();
             int index = lives.indexOf("proxy://");
             if (index != -1) {
                 int endIndex = lives.lastIndexOf("\"");
@@ -381,7 +428,8 @@ public class ApiConfig {
                 liveChannelGroup.setGroupName(url);
                 liveChannelGroupList.add(liveChannelGroup);
             } else {
-                if(lives.contains("group"))loadLives(infoJson.get("lives").getAsJsonArray());
+                if(lives.contains("group"))loadLives(livesElement.getAsJsonArray());
+            }
             }
         } catch (Throwable th) {
             th.printStackTrace();
@@ -389,11 +437,19 @@ public class ApiConfig {
         //video parse rule for host
         if (infoJson.has("rules")) {
             VideoParseRuler.clearRule();
-            for(JsonElement oneHostRule : infoJson.getAsJsonArray("rules")) {
+            JsonElement rulesElement = infoJson.get("rules");
+            if (rulesElement != null && rulesElement.isJsonArray()) {
+            for(JsonElement oneHostRule : rulesElement.getAsJsonArray()) {
+                if (oneHostRule == null || !oneHostRule.isJsonObject()) continue;
                 JsonObject obj = (JsonObject) oneHostRule;
-                String host = obj.get("host").getAsString();
+                String host = DefaultConfig.safeJsonString(obj, "host", "");
+                // Newer configurations use hosts/regex instead of host. They are
+                // unsupported by this legacy parser, but must not abort the import.
+                if (host.isEmpty()) continue;
                 if (obj.has("rule")) {
-                    JsonArray ruleJsonArr = obj.getAsJsonArray("rule");
+                    JsonElement ruleElement = obj.get("rule");
+                    if (ruleElement == null || !ruleElement.isJsonArray()) continue;
+                    JsonArray ruleJsonArr = ruleElement.getAsJsonArray();
                     ArrayList<String> rule = new ArrayList<>();
                     for(JsonElement one : ruleJsonArr) {
                         String oneRule = one.getAsString();
@@ -404,7 +460,9 @@ public class ApiConfig {
                     }
                 }
                 if (obj.has("filter")) {
-                    JsonArray filterJsonArr = obj.getAsJsonArray("filter");
+                    JsonElement filterElement = obj.get("filter");
+                    if (filterElement == null || !filterElement.isJsonArray()) continue;
+                    JsonArray filterJsonArr = filterElement.getAsJsonArray();
                     ArrayList<String> filter = new ArrayList<>();
                     for(JsonElement one : filterJsonArr) {
                         String oneFilter = one.getAsString();
@@ -415,6 +473,7 @@ public class ApiConfig {
                     }
                 }
             }
+            }
         }
 
         String defaultIJKADS="{\"ijk\":[{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"overlay-format\",\"category\":4,\"value\":\"842225234\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"1\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurateeek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"0\"},{\"name\":\"dns_cache_timeout\",\"category\":1,\"value\":\"600000000\"}],\"group\":\"软解码\"},{\"options\":[{\"name\":\"opensles\",\"category\":4,\"value\":\"0\"},{\"name\":\"overlay-format\",\"category\":4,\"value\":\"842225234\"},{\"name\":\"framedrop\",\"category\":4,\"value\":\"1\"},{\"name\":\"soundtouch\",\"category\":4,\"value\":\"1\"},{\"name\":\"start-on-prepared\",\"category\":4,\"value\":\"1\"},{\"name\":\"http-detect-rangeupport\",\"category\":1,\"value\":\"0\"},{\"name\":\"fflags\",\"category\":1,\"value\":\"fastseek\"},{\"name\":\"skip_loop_filter\",\"category\":2,\"value\":\"48\"},{\"name\":\"reconnect\",\"category\":4,\"value\":\"1\"},{\"name\":\"enable-accurateeek\",\"category\":4,\"value\":\"0\"},{\"name\":\"mediacodec\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-auto-rotate\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-handle-resolution-change\",\"category\":4,\"value\":\"1\"},{\"name\":\"mediacodec-hevc\",\"category\":4,\"value\":\"1\"},{\"name\":\"dns_cache_timeout\",\"category\":1,\"value\":\"600000000\"}],\"group\":\"硬解码\"}],\"ads\":[\"mimg.0c1q0l.cn\",\"www.googletagmanager.com\",\"www.google-analytics.com\",\"mc.usihnbcq.cn\",\"mg.g1mm3d.cn\",\"mscs.svaeuzh.cn\",\"cnzz.hhttm.top\",\"tp.vinuxhome.com\",\"cnzz.mmstat.com\",\"www.baihuillq.com\",\"s23.cnzz.com\",\"z3.cnzz.com\",\"c.cnzz.com\",\"stj.v1vo.top\",\"z12.cnzz.com\",\"img.mosflower.cn\",\"tips.gamevvip.com\",\"ehwe.yhdtns.com\",\"xdn.cqqc3.com\",\"www.jixunkyy.cn\",\"sp.chemacid.cn\",\"hm.baidu.com\",\"s9.cnzz.com\",\"z6.cnzz.com\",\"um.cavuc.com\",\"mav.mavuz.com\",\"wofwk.aoidf3.com\",\"z5.cnzz.com\",\"xc.hubeijieshikj.cn\",\"tj.tianwenhu.com\",\"xg.gars57.cn\",\"k.jinxiuzhilv.com\",\"cdn.bootcss.com\",\"ppl.xunzhuo123.com\",\"xomk.jiangjunmh.top\",\"img.xunzhuo123.com\",\"z1.cnzz.com\",\"s13.cnzz.com\",\"xg.huataisangao.cn\",\"z7.cnzz.com\",\"xg.huataisangao.cn\",\"z2.cnzz.com\",\"s96.cnzz.com\",\"q11.cnzz.com\",\"thy.dacedsfa.cn\",\"xg.whsbpw.cn\",\"s19.cnzz.com\",\"z8.cnzz.com\",\"s4.cnzz.com\",\"f5w.as12df.top\",\"ae01.alicdn.com\",\"www.92424.cn\",\"k.wudejia.com\",\"vivovip.mmszxc.top\",\"qiu.xixiqiu.com\",\"cdnjs.hnfenxun.com\",\"cms.qdwght.com\"]}";
@@ -423,8 +482,9 @@ public class ApiConfig {
         if(AdBlocker.isEmpty()){
 //            AdBlocker.clear();
             //追加的广告拦截
-            if(infoJson.has("ads")){
-                for (JsonElement host : infoJson.getAsJsonArray("ads")) {
+            JsonElement adsElement = infoJson.get("ads");
+            if(adsElement != null && adsElement.isJsonArray()){
+                for (JsonElement host : adsElement.getAsJsonArray()) {
                     AdBlocker.addAdHost(host.getAsString());
                 }
             }else {
@@ -473,10 +533,14 @@ public class ApiConfig {
         int channelIndex = 0;
         int channelNum = 0;
         for (JsonElement groupElement : livesArray) {
+            if (groupElement == null || !groupElement.isJsonObject()) continue;
+            JsonObject groupObject = groupElement.getAsJsonObject();
+            JsonElement channelsElement = groupObject.get("channels");
+            String groupName = DefaultConfig.safeJsonString(groupObject, "group", "");
+            if (groupName.isEmpty() || channelsElement == null || !channelsElement.isJsonArray()) continue;
             LiveChannelGroup liveChannelGroup = new LiveChannelGroup();
             liveChannelGroup.setLiveChannels(new ArrayList<LiveChannelItem>());
             liveChannelGroup.setGroupIndex(groupIndex++);
-            String groupName = ((JsonObject) groupElement).get("group").getAsString().trim();
             String[] splitGroupName = groupName.split("_", 2);
             liveChannelGroup.setGroupName(splitGroupName[0]);
             if (splitGroupName.length > 1)
@@ -484,13 +548,16 @@ public class ApiConfig {
             else
                 liveChannelGroup.setGroupPassword("");
             channelIndex = 0;
-            for (JsonElement channelElement : ((JsonObject) groupElement).get("channels").getAsJsonArray()) {
+            for (JsonElement channelElement : channelsElement.getAsJsonArray()) {
+                if (channelElement == null || !channelElement.isJsonObject()) continue;
                 JsonObject obj = (JsonObject) channelElement;
+                String channelName = DefaultConfig.safeJsonString(obj, "name", "");
+                ArrayList<String> urls = DefaultConfig.safeJsonStringList(obj, "urls");
+                if (channelName.isEmpty() || urls.isEmpty()) continue;
                 LiveChannelItem liveChannelItem = new LiveChannelItem();
-                liveChannelItem.setChannelName(obj.get("name").getAsString().trim());
+                liveChannelItem.setChannelName(channelName);
                 liveChannelItem.setChannelIndex(channelIndex++);
                 liveChannelItem.setChannelNum(++channelNum);
-                ArrayList<String> urls = DefaultConfig.safeJsonStringList(obj, "urls");
                 ArrayList<String> sourceNames = new ArrayList<>();
                 ArrayList<String> sourceUrls = new ArrayList<>();
                 int sourceIndex = 1;
@@ -509,6 +576,10 @@ public class ApiConfig {
             }
             liveChannelGroupList.add(liveChannelGroup);
         }
+    }
+
+    private boolean isSupportedLegacySourceType(int type) {
+        return type == 0 || type == 1 || type == 4;
     }
 
     public String getSpider() {
