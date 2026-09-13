@@ -32,8 +32,9 @@ import me.jessyan.autosize.unit.Subunits;
  */
 public class App extends MultiDexApplication {
     private static final String LEGACY_DEFAULT_CONFIG_URL =
-            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/3abfebb/configs/sharp-tvbox-android44-candidates.json";
+            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/a0351a21b0f7bd952964d32fd504cce26856d820/configs/sharp-tvbox-android44-candidates.json";
     private static final String LEGACY_DOH_MIGRATION = "sharp44_doh_disabled_v1";
+    private static final String LEGACY_CONFIG_MIGRATION = "sharp44_direct_config_v1";
     private static App instance;
 
     @Override
@@ -90,8 +91,9 @@ public class App extends MultiDexApplication {
             Hawk.put(HawkConfig.DOH_URL, 0);
             Hawk.put(LEGACY_DOH_MIGRATION, true);
         }
-        if (!Hawk.contains(HawkConfig.API_URL)) {
+        if (!Hawk.contains(LEGACY_CONFIG_MIGRATION)) {
             Hawk.put(HawkConfig.API_URL, LEGACY_DEFAULT_CONFIG_URL);
+            Hawk.put(LEGACY_CONFIG_MIGRATION, true);
         }
         if (!Hawk.contains(HawkConfig.HOME_REC)) {
             Hawk.put(HawkConfig.HOME_REC, 1);

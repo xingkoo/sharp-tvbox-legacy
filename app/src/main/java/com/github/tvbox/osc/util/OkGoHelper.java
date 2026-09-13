@@ -123,7 +123,7 @@ public class OkGoHelper {
                 if ("ffzy1.tv".equalsIgnoreCase(hostname)) {
                     return Arrays.asList(
                             InetAddress.getByAddress(new byte[]{(byte) 172, (byte) 247, 13, (byte) 251}),
-                            InetAddress.getByAddress(new byte[]{(byte) 91, (byte) 110, (byte) 207, (byte) 163}));
+                            InetAddress.getByAddress(new byte[]{(byte) 91, (byte) 110, (byte) 207, 6}));
                 }
                 return upstream.lookup(hostname);
             }
