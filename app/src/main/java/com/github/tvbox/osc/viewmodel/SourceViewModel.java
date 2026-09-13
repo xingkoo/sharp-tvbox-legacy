@@ -72,6 +72,21 @@ public class SourceViewModel extends ViewModel {
         playResult = new MutableLiveData<>();
     }
 
+    /**
+     * The legacy UI turns a failed source request into an empty page without
+     * preserving the cause.  Keep the diagnostic deliberately small: it is
+     * enough to distinguish TLS/network failures from malformed API results
+     * without writing a response body or an API URL to logcat.
+     */
+    private static void logSourceResult(String stage, SourceBean source, Response<String> response, String body) {
+        Throwable error = response.getException();
+        String errorText = error == null ? "none" : error.getClass().getSimpleName() + ": " + error.getMessage();
+        LOG.i("SOURCE " + stage + " key=" + source.getKey()
+                + " http=" + response.code()
+                + " bytes=" + (body == null ? -1 : body.length())
+                + " error=" + errorText);
+    }
+
     public static final ExecutorService spThreadPool = Executors.newSingleThreadExecutor();
 
     // homeContent
@@ -150,13 +165,16 @@ public class SourceViewModel extends ViewModel {
                         @Override
                         public void onSuccess(Response<String> response) {
                             AbsSortXml sortXml = null;
+                            String body = response.body();
+                            logSourceResult("sort-success", sourceBean, response, body);
                             if (type == 0) {
-                                String xml = response.body();
+                                String xml = body;
                                 sortXml = sortXml(sortResult, xml);
                             } else if (type == 1) {
-                                String json = response.body();
+                                String json = body;
                                 sortXml = sortJson(sortResult, json);
                             }
+                            LOG.i("SOURCE sort-parsed key=" + sourceBean.getKey() + " valid=" + (sortXml != null));
                             if (sortXml != null && Hawk.get(HawkConfig.HOME_REC, 0) == 1 && sortXml.list != null && sortXml.list.videoList != null && sortXml.list.videoList.size() > 0) {
                                 ArrayList<String> ids = new ArrayList<>();
                                 for (Movie.Video vod : sortXml.list.videoList) {
@@ -178,6 +196,7 @@ public class SourceViewModel extends ViewModel {
                         @Override
                         public void onError(Response<String> response) {
                             super.onError(response);
+                            logSourceResult("sort-error", sourceBean, response, null);
                             sortResult.postValue(null);
                         }
                     });
@@ -268,11 +287,13 @@ public class SourceViewModel extends ViewModel {
 
                         @Override
                         public void onSuccess(Response<String> response) {
+                            String body = response.body();
+                            logSourceResult("list-success", homeSourceBean, response, body);
                             if (type == 0) {
-                                String xml = response.body();
+                                String xml = body;
                                 xml(listResult, xml, homeSourceBean.getKey());
                             } else {
-                                String json = response.body();
+                                String json = body;
                                 json(listResult, json, homeSourceBean.getKey());
                             }
                         }
@@ -280,6 +301,7 @@ public class SourceViewModel extends ViewModel {
                         @Override
                         public void onError(Response<String> response) {
                             super.onError(response);
+                            logSourceResult("list-error", homeSourceBean, response, null);
                             listResult.postValue(null);
                         }
                     });
