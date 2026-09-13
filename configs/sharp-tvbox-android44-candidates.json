@@ -2,7 +2,7 @@
   "sites": [
     {
       "key": "csp_SNzy",
-      "name": "📺┃非凡┃兼容",
+      "name": "📺┃非凡┃安卓4兼容",
       "type": 1,
       "api": "http://ffzy1.tv/api.php/provide/vod/",
       "searchable": 1,
@@ -35,7 +35,7 @@
         "日韩综艺",
         "欧美综艺"
       ],
-      "playurl": "json:http://jx.84jia.com/m3u8ts.php?url="
+      "playurl": ""
     },
     {
       "key": "量子资源",

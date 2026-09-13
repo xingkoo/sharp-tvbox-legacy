@@ -33,6 +33,7 @@ import me.jessyan.autosize.unit.Subunits;
 public class App extends MultiDexApplication {
     private static final String LEGACY_DEFAULT_CONFIG_URL =
             "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/3abfebb/configs/sharp-tvbox-android44-candidates.json";
+    private static final String LEGACY_DOH_MIGRATION = "sharp44_doh_disabled_v1";
     private static App instance;
 
     @Override
@@ -81,11 +82,13 @@ public class App extends MultiDexApplication {
         if (!Hawk.contains(HawkConfig.PLAY_TYPE)) {
             Hawk.put(HawkConfig.PLAY_TYPE, 1);
         }
-        // The TV's DHCP resolver returns an unreachable address for several
-        // configured providers.  This is an app-only resolver choice; it does
-        // not alter Android's network or DNS settings.
-        if (!Hawk.contains(HawkConfig.DOH_URL)) {
-            Hawk.put(HawkConfig.DOH_URL, 1);
+        // Android 4.4 cannot negotiate TLS with the public DoH endpoints used
+        // here. When DoH is enabled, every hostname lookup fails before even a
+        // plain-HTTP source request can start. Migrate existing installs once;
+        // this changes only TVBox, never Android's system DNS configuration.
+        if (!Hawk.contains(LEGACY_DOH_MIGRATION)) {
+            Hawk.put(HawkConfig.DOH_URL, 0);
+            Hawk.put(LEGACY_DOH_MIGRATION, true);
         }
         if (!Hawk.contains(HawkConfig.API_URL)) {
             Hawk.put(HawkConfig.API_URL, LEGACY_DEFAULT_CONFIG_URL);
