@@ -12,6 +12,7 @@ import com.github.tvbox.osc.util.FileUtils;
 import com.github.tvbox.osc.util.OkGoHelper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.lzy.okgo.OkGo;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -121,6 +122,8 @@ public class RemoteServer extends NanoHTTPD {
                             return NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.INTERNAL_ERROR, NanoHTTPD.MIME_PLAINTEXT, "500");
                         }
                     }
+                } else if (fileName.startsWith("/audio/")) {
+                    return serveAudiusAudio(session, fileName.substring(7));
                 } else if (fileName.startsWith("/file/")) {
                     try {
                         String f = fileName.substring(6);
@@ -237,6 +240,46 @@ public class RemoteServer extends NanoHTTPD {
         }
         //default page: index.html
         return getRequestList.get(0).doResponse(session, "", null, null);
+    }
+
+    /**
+     * Streams one public Audius track through the app's Conscrypt-backed
+     * OkHttp stack.  The Android 4.4 IJK build cannot negotiate the modern TLS
+     * used by Audius and its storage nodes, so it reads the same bytes from a
+     * loopback HTTP URL instead.  The path accepts only a track id and cannot
+     * be used as a general-purpose network proxy.
+     */
+    private Response serveAudiusAudio(IHTTPSession session, String trackId) {
+        if (trackId == null || !trackId.matches("[A-Za-z0-9]+") || trackId.length() > 32) {
+            return createPlainTextResponse(Response.Status.BAD_REQUEST, "invalid track id");
+        }
+        try {
+            com.lzy.okgo.request.GetRequest<String> request = OkGo.<String>get(
+                    "https://api.audius.co/v1/tracks/" + trackId
+                            + "/stream?app_name=sharp_tv_music")
+                    .headers("User-Agent", "SharpTVMusic/1.0");
+            String range = session.getHeaders().get("range");
+            if (range != null && !range.isEmpty()) request.headers("Range", range);
+
+            okhttp3.Response upstream = request.execute();
+            if (upstream.body() == null) {
+                upstream.close();
+                return createPlainTextResponse(Response.Status.BAD_GATEWAY, "empty upstream body");
+            }
+            String mime = upstream.body().contentType() == null
+                    ? "audio/mpeg"
+                    : upstream.body().contentType().toString();
+            Response.Status status = Response.Status.lookup(upstream.code());
+            if (status == null) status = Response.Status.BAD_GATEWAY;
+            Response response = NanoHTTPD.newChunkedResponse(status, mime, upstream.body().byteStream());
+            String contentRange = upstream.header("Content-Range");
+            if (contentRange != null) response.addHeader("Content-Range", contentRange);
+            response.addHeader("Accept-Ranges", "bytes");
+            return response;
+        } catch (Throwable error) {
+            return createPlainTextResponse(Response.Status.BAD_GATEWAY,
+                    "audio upstream unavailable");
+        }
     }
 
     public void setDataReceiver(DataReceiver receiver) {

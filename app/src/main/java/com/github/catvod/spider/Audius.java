@@ -4,6 +4,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.github.catvod.crawler.Spider;
+import com.github.tvbox.osc.server.ControlManager;
 import com.lzy.okgo.OkGo;
 
 import org.json.JSONArray;
@@ -116,10 +117,8 @@ public class Audius extends Spider {
         JSONObject result = new JSONObject();
         try {
             result.put("parse", 0);
-            result.put("url", API + "/tracks/" + id + "/stream?app_name=" + APP_NAME);
-            JSONObject headers = new JSONObject();
-            headers.put("User-Agent", "SharpTVMusic/1.0");
-            result.put("header", headers);
+            String localBase = ControlManager.get().getAddress(true);
+            result.put("url", localBase + "audio/" + id);
         } catch (Throwable error) {
             Log.e(TAG, "player failed", error);
         }
