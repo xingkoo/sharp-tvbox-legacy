@@ -320,9 +320,12 @@ public class ApiConfig {
             String siteApi = DefaultConfig.safeJsonString(obj, "api", "");
             int siteType = DefaultConfig.safeJsonInt(obj, "type", -1);
             String siteJar = DefaultConfig.safeJsonString(obj, "jar", "");
+            boolean builtInLegacySource = siteType == 3
+                    && "csp_Audius".equals(siteApi)
+                    && siteJar.isEmpty();
             if (siteKey.isEmpty() || siteName.isEmpty() || siteApi.isEmpty()) continue;
-            if (!isSupportedLegacySourceType(siteType)) continue;
-            if (LEGACY_SAFE_MODE && (siteType == 3 || !siteJar.isEmpty())) continue;
+            if (!isSupportedLegacySourceType(siteType) && !builtInLegacySource) continue;
+            if (LEGACY_SAFE_MODE && ((siteType == 3 && !builtInLegacySource) || !siteJar.isEmpty())) continue;
             sb.setKey(siteKey);
             sb.setName(siteName);
             sb.setType(siteType);

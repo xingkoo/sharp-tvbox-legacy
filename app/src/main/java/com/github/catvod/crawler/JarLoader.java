@@ -134,6 +134,22 @@ public class JarLoader {
             return null;
         }
         String clsKey = cls.replace("csp_", "");
+        // The Sharp Android 4.4 build keeps remote jar loading disabled, but a
+        // small allow-listed spider may be compiled into the APK.  Resolve it
+        // with the app class loader before considering any external dex file.
+        if (jar.isEmpty() && "Audius".equals(clsKey)) {
+            try {
+                Spider sp = (Spider) App.getInstance().getClassLoader()
+                        .loadClass("com.github.catvod.spider." + clsKey)
+                        .newInstance();
+                sp.init(App.getInstance(), ext);
+                spiders.put(key, sp);
+                return sp;
+            } catch (Throwable th) {
+                th.printStackTrace();
+                return new SpiderNull();
+            }
+        }
         String jarUrl = "";
         String jarMd5 = "";
         String jarKey = "";
