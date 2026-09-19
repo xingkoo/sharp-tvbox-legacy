@@ -1,15 +1,19 @@
 apply plugin: 'com.android.application'
 
+def musicSidecar = project.hasProperty('musicSidecar')
+
 android {
     compileSdkVersion 30
 
     defaultConfig {
-        applicationId 'com.github.tvbox.osc'
+        applicationId musicSidecar ? 'com.github.tvbox.osc.music' : 'com.github.tvbox.osc'
         minSdkVersion 16
         targetSdkVersion 26
         versionCode 13
         versionName '1.0.12-sharp44-music'
         multiDexEnabled true
+        manifestPlaceholders = [appLabel: musicSidecar ? '电视音乐' : 'TVBox']
+        buildConfigField 'boolean', 'MUSIC_SIDECAR', musicSidecar ? 'true' : 'false'
         //设置room的Schema的位置
         javaCompileOptions {
             annotationProcessorOptions {

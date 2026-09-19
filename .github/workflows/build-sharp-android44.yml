@@ -35,7 +35,7 @@ jobs:
       - name: Build unminified debug APK
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon :app:assembleDebug
+          ./gradlew -PmusicSidecar --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
           name: sharp-tvbox-android44-debug

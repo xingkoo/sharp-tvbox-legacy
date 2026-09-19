@@ -5,6 +5,7 @@ import android.util.Log;
 import androidx.multidex.MultiDexApplication;
 
 import com.github.tvbox.osc.bean.VodInfo;
+import com.github.tvbox.osc.BuildConfig;
 import com.github.tvbox.osc.callback.EmptyCallback;
 import com.github.tvbox.osc.callback.LoadingCallback;
 import com.github.tvbox.osc.data.AppDataManager;
@@ -32,7 +33,7 @@ import me.jessyan.autosize.unit.Subunits;
  */
 public class App extends MultiDexApplication {
     private static final String LEGACY_DEFAULT_CONFIG_URL =
-            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/c04b8adac93892bed93498daa25e959611fb756c/configs/sharp-tvbox-android44-candidates.json";
+            "https://raw.githubusercontent.com/xingkoo/sharp-tvbox-legacy/771c55f0fd16e7c11e2b8b9eeaec47076e31a94f/configs/sharp-tvbox-android44-candidates.json";
     private static final String LEGACY_DOH_MIGRATION = "sharp44_doh_disabled_v1";
     private static final String LEGACY_CONFIG_MIGRATION = "sharp44_direct_config_v2";
     private static App instance;
@@ -94,6 +95,9 @@ public class App extends MultiDexApplication {
         if (!Hawk.contains(LEGACY_CONFIG_MIGRATION)) {
             Hawk.put(HawkConfig.API_URL, LEGACY_DEFAULT_CONFIG_URL);
             Hawk.put(LEGACY_CONFIG_MIGRATION, true);
+        }
+        if (BuildConfig.MUSIC_SIDECAR && !Hawk.contains(HawkConfig.HOME_API)) {
+            Hawk.put(HawkConfig.HOME_API, "builtin_audius");
         }
         if (!Hawk.contains(HawkConfig.HOME_REC)) {
             Hawk.put(HawkConfig.HOME_REC, 1);
