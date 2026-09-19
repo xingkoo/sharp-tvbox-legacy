@@ -18,6 +18,12 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's historical default also asks sdkmanager for the
+          # retired umbrella package named "tools", which now fails.  The
+          # runner already has current command-line tools; only platform-tools
+          # is needed before the pinned SDK packages below are installed.
+          packages: platform-tools
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses
