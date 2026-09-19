@@ -5,13 +5,14 @@ import android.util.Log;
 
 import com.github.catvod.crawler.Spider;
 import com.lzy.okgo.OkGo;
-import com.lzy.okgo.model.Response;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.List;
+
+import okhttp3.Response;
 
 /**
  * Read-only Audius music source for the Sharp Android 4.4 build.
@@ -73,7 +74,7 @@ public class Audius extends Spider {
     public String searchContent(String key, boolean quick) {
         JSONObject result = pageResult(1);
         try {
-            Response<String> response = OkGo.<String>get(API + "/tracks/search")
+            Response response = OkGo.<String>get(API + "/tracks/search")
                     .headers("User-Agent", "SharpTVMusic/1.0")
                     .params("query", key)
                     .params("limit", quick ? 10 : PAGE_SIZE)
@@ -92,7 +93,7 @@ public class Audius extends Spider {
         JSONArray list = new JSONArray();
         try {
             if (ids != null && !ids.isEmpty()) {
-                Response<String> response = OkGo.<String>get(API + "/tracks/" + ids.get(0))
+                Response response = OkGo.<String>get(API + "/tracks/" + ids.get(0))
                         .headers("User-Agent", "SharpTVMusic/1.0")
                         .params("app_name", APP_NAME)
                         .execute();
@@ -135,7 +136,7 @@ public class Audius extends Spider {
         return parseTrackList(request.execute());
     }
 
-    private JSONArray parseTrackList(Response<String> response) throws Exception {
+    private JSONArray parseTrackList(Response response) throws Exception {
         JSONObject root = checkedJson(response);
         JSONArray data = root.optJSONArray("data");
         JSONArray list = new JSONArray();
@@ -148,12 +149,14 @@ public class Audius extends Spider {
         return list;
     }
 
-    private JSONObject checkedJson(Response<String> response) throws Exception {
-        if (response == null || !response.isSuccessful() || TextUtils.isEmpty(response.body())) {
+    private JSONObject checkedJson(Response response) throws Exception {
+        if (response == null || !response.isSuccessful() || response.body() == null) {
             int code = response == null ? -1 : response.code();
             throw new IllegalStateException("Audius HTTP " + code);
         }
-        return new JSONObject(response.body());
+        String body = response.body().string();
+        if (TextUtils.isEmpty(body)) throw new IllegalStateException("Audius returned an empty body");
+        return new JSONObject(body);
     }
 
     private JSONObject toVod(JSONObject track, boolean detail) throws Exception {
