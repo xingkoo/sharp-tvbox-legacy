@@ -53,6 +53,16 @@
       "searchable": 1,
       "quickSearch": 1,
       "filterable": 0
+    },
+    {
+      "key": "modudongman_ijk",
+      "name": "魔都动漫（实机播放通过）",
+      "type": 1,
+      "api": "http://caiji.moduapi.cc/api.php/provide/vod",
+      "searchable": 1,
+      "quickSearch": 0,
+      "filterable": 1,
+      "playerType": 1
     }
   ],
   "lives": [
