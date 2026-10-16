@@ -2530,6 +2530,12 @@
           "urls": [
             "https://www.goodiptv.club/douyu/9329608$实测-h264-1920x1080"
           ]
+        },
+        {
+          "name": "TV BRICS 中文",
+          "urls": [
+            "http://chibrics.mediacdn.ru/cdn/brics/chinese/playlist.m3u8"
+          ]
         }
       ]
     }
